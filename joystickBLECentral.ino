@@ -7,6 +7,11 @@
 */
 
 #include <ArduinoBLE.h>
+union ArrayToInteger 
+{
+  byte array[4];
+  uint32_t integer;
+};
 
 void setup() {
   Serial.begin(9600);
@@ -24,7 +29,14 @@ void setup() {
 void loop() {
   // check if a peripheral has been discovered
   BLEDevice peripheral = BLE.available();
-
+  delay(300);
+  Serial.print(".");
+  delay(300);
+  Serial.print(".");
+  delay(300);
+  Serial.print(".");
+  delay(300);
+  Serial.print(".");
   if (peripheral) {
     // discovered a peripheral, print out address, local name, and advertised service
     Serial.print("Found ");
@@ -84,12 +96,32 @@ void read_x_y_values(BLEDevice peripheral) {
     peripheral.disconnect();
     return;
   }
-
-  while (peripheral.connected()) {
-    // while the peripheral is connected read x and y values
-    Serial.print(x_readingChar.read());
+  Serial.print("x_reading\ty_reading");
+  while (peripheral.connected()) 
+  {
+    x_readingChar.read();
+    Serial.print(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    y_readingChar.read();
     Serial.print("\t");
-    Serial.println(y_readingChar.read());
+    Serial.print(byteArrayToInt(y_readingChar.value(), y_readingChar.valueLength()));
+    Serial.println();
   }
   Serial.println("Peripheral disconnected");
+}
+
+int byteArrayToInt(const byte data[], int length)
+{
+  byte dataW[length];
+  for (int i = 0;i < length; i++)
+  {
+    byte b = data[i];
+    dataW[i] = data[i];
+  }
+  ArrayToInteger converter;
+  converter.array[0] = dataW[0];
+  converter.array[1] = dataW[1];
+  converter.array[2] = dataW[2];
+  converter.array[3] = dataW[3];
+  return converter.integer;
+  
 }
