@@ -13,9 +13,19 @@ union ArrayToInteger
   uint32_t integer;
 };
 
+int mainMotorPWM_PIN = 3;
+int runCW_PIN = 4;
+int runCCW_PIN = 5;
+
 void setup() {
   Serial.begin(9600);
   //while (!Serial);
+
+  pinMode(mainMotorPWM_PIN, OUTPUT);
+  pinMode(runCW_PIN, OUTPUT);
+  pinMode(runCCW_PIN, OUTPUT);
+  digitalWrite(runCW_PIN, LOW);
+  digitalWrite(runCCW_PIN, HIGH);
 
   // initialize the Bluetooth® Low Energy hardware
   BLE.begin();
@@ -85,6 +95,8 @@ void read_x_y_values(BLEDevice peripheral) {
   // retrieve the LED characteristic
   BLECharacteristic x_readingChar = peripheral.characteristic("76ad7aa1-3782-11ed-a261-0242ac120002");
   BLECharacteristic y_readingChar = peripheral.characteristic("76ad7aa2-3782-11ed-a261-0242ac120002");
+  BLECharacteristic turningDirectionChar = peripheral.characteristic("76ad7aa6-3782-11ed-a261-0242ac120002");
+  BLECharacteristic runningDirectionChar = peripheral.characteristic("76ad7aa7-3782-11ed-a261-0242ac120002");
 
   if (!x_readingChar) {
     Serial.println("Peripheral does not have x_readingChar!");
@@ -99,12 +111,27 @@ void read_x_y_values(BLEDevice peripheral) {
   Serial.print("x_reading\ty_reading");
   while (peripheral.connected()) 
   {
+    turningDirectionChar.read();
+    if(turningDirectionChar.value() == true)
+    {
+      digitalWrite(runCW_PIN, HIGH);
+      digitalWrite(runCCW_PIN, LOW);
+    }
+    else
+    {
+      digitalWrite(runCW_PIN, LOW);
+      digitalWrite(runCCW_PIN, HIGH);
+    }
+    runningDirectionChar.read();
+    
     x_readingChar.read();
-    Serial.print(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    Serial.println(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
     y_readingChar.read();
     Serial.print("\t");
     Serial.print(byteArrayToInt(y_readingChar.value(), y_readingChar.valueLength()));
     Serial.println();
+    analogWrite(mainMotorPWM_PIN, byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    
   }
   Serial.println("Peripheral disconnected");
 }
