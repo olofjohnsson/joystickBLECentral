@@ -14,18 +14,23 @@ union ArrayToInteger
 };
 
 int mainMotorPWM_PIN = 3;
-int runCW_PIN = 4;
-int runCCW_PIN = 5;
+int turnCW_PIN = 4;
+int turnCCW_PIN = 5;
+int runFwd_PIN = 6;
+int runBwd_PIN = 7;
 
 void setup() {
   Serial.begin(9600);
   //while (!Serial);
-
   pinMode(mainMotorPWM_PIN, OUTPUT);
-  pinMode(runCW_PIN, OUTPUT);
-  pinMode(runCCW_PIN, OUTPUT);
-  digitalWrite(runCW_PIN, LOW);
-  digitalWrite(runCCW_PIN, HIGH);
+  pinMode(runFwd_PIN, OUTPUT);
+  pinMode(runBwd_PIN, OUTPUT);
+  pinMode(turnCW_PIN, OUTPUT);
+  pinMode(turnCCW_PIN, OUTPUT);
+  digitalWrite(runFwd_PIN, LOW);
+  digitalWrite(runBwd_PIN, LOW);
+  digitalWrite(turnCW_PIN, LOW);
+  digitalWrite(turnCCW_PIN, LOW);
 
   // initialize the Bluetooth® Low Energy hardware
   BLE.begin();
@@ -71,7 +76,8 @@ void loop() {
   }
 }
 
-void read_x_y_values(BLEDevice peripheral) {
+void read_x_y_values(BLEDevice peripheral)
+{
   // connect to the peripheral
   Serial.println("Connecting ...");
 
@@ -95,6 +101,8 @@ void read_x_y_values(BLEDevice peripheral) {
   // retrieve the LED characteristic
   BLECharacteristic x_readingChar = peripheral.characteristic("76ad7aa1-3782-11ed-a261-0242ac120002");
   BLECharacteristic y_readingChar = peripheral.characteristic("76ad7aa2-3782-11ed-a261-0242ac120002");
+  BLECharacteristic x_rawReadingChar = peripheral.characteristic("76ad7ab1-3782-11ed-a261-0242ac120002");
+  BLECharacteristic y_rawReadingChar = peripheral.characteristic("76ad7ab2-3782-11ed-a261-0242ac120002");
   BLECharacteristic turningDirectionChar = peripheral.characteristic("76ad7aa6-3782-11ed-a261-0242ac120002");
   BLECharacteristic runningDirectionChar = peripheral.characteristic("76ad7aa7-3782-11ed-a261-0242ac120002");
 
@@ -112,26 +120,49 @@ void read_x_y_values(BLEDevice peripheral) {
   while (peripheral.connected()) 
   {
     turningDirectionChar.read();
-    if(turningDirectionChar.value() == true)
+    delay(50);
+    if(byteArrayToInt(turningDirectionChar.value(), turningDirectionChar.valueLength()) == 1)
     {
-      digitalWrite(runCW_PIN, HIGH);
-      digitalWrite(runCCW_PIN, LOW);
+      digitalWrite(turnCW_PIN, HIGH);
+      digitalWrite(turnCCW_PIN, LOW);
     }
     else
     {
-      digitalWrite(runCW_PIN, LOW);
-      digitalWrite(runCCW_PIN, HIGH);
+      digitalWrite(turnCW_PIN, LOW);
+      digitalWrite(turnCCW_PIN, HIGH);
     }
     runningDirectionChar.read();
+    delay(50);§ 
+    if(byteArrayToInt(runningDirectionChar.value(), runningDirectionChar.valueLength()) == 1)
+    {
+      digitalWrite(runFwd_PIN, HIGH);
+      digitalWrite(runBwd_PIN, LOW);
+    }
+    else
+    {
+      digitalWrite(runFwd_PIN, LOW);
+      digitalWrite(runBwd_PIN, HIGH);
+    }
     
     x_readingChar.read();
-    Serial.println(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
     y_readingChar.read();
-    Serial.print("\t");
-    Serial.print(byteArrayToInt(y_readingChar.value(), y_readingChar.valueLength()));
-    Serial.println();
-    analogWrite(mainMotorPWM_PIN, byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    turningDirectionChar.read();
+    runningDirectionChar.read();
     
+//    Serial.print(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+//    Serial.print("\t");
+//    Serial.println(byteArrayToInt(y_readingChar.value(), y_readingChar.valueLength()));
+//    Serial.println();
+////    Serial.print(byteArrayToInt(x_rawReadingChar.value(), x_rawReadingChar.valueLength()));
+////    Serial.print("\t");
+////    Serial.println(byteArrayToInt(y_rawReadingChar.value(), y_rawReadingChar.valueLength()));
+////    Serial.println();
+//
+    analogWrite(mainMotorPWM_PIN, byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+//    Serial.print("turningDirection: ");
+//    Serial.println(byteArrayToInt(turningDirectionChar.value(), turningDirectionChar.valueLength()));
+//    Serial.print("runningDirection: ");
+//    Serial.println(byteArrayToInt(runningDirectionChar.value(), runningDirectionChar.valueLength()));
   }
   Serial.println("Peripheral disconnected");
 }
