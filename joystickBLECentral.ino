@@ -7,6 +7,7 @@
 */
 
 #include <ArduinoBLE.h>
+#include <Servo.h>
 union ArrayToInteger 
 {
   byte array[4];
@@ -18,8 +19,13 @@ int turnCW_PIN = 4;
 int turnCCW_PIN = 5;
 int runFwd_PIN = 6;
 int runBwd_PIN = 7;
+int servo_PIN = 9;
+int servo_x_val = 90;
+
+Servo myServo;
 
 void setup() {
+  BLE.setConnectionInterval(0x0006, 0x0006);
   Serial.begin(9600);
   //while (!Serial);
   pinMode(mainMotorPWM_PIN, OUTPUT);
@@ -31,6 +37,7 @@ void setup() {
   digitalWrite(runBwd_PIN, LOW);
   digitalWrite(turnCW_PIN, LOW);
   digitalWrite(turnCCW_PIN, LOW);
+  myServo.attach(servo_PIN);
 
   // initialize the Bluetooth® Low Energy hardware
   BLE.begin();
@@ -116,11 +123,11 @@ void read_x_y_values(BLEDevice peripheral)
     peripheral.disconnect();
     return;
   }
-  Serial.print("x_reading\ty_reading");
+  //Serial.print("x_reading\ty_reading");
   while (peripheral.connected()) 
   {
     turningDirectionChar.read();
-    delay(50);
+    //delay(50);
     if(byteArrayToInt(turningDirectionChar.value(), turningDirectionChar.valueLength()) == 1)
     {
       digitalWrite(turnCW_PIN, HIGH);
@@ -132,7 +139,7 @@ void read_x_y_values(BLEDevice peripheral)
       digitalWrite(turnCCW_PIN, HIGH);
     }
     runningDirectionChar.read();
-    delay(50);§ 
+    //delay(50);
     if(byteArrayToInt(runningDirectionChar.value(), runningDirectionChar.valueLength()) == 1)
     {
       digitalWrite(runFwd_PIN, HIGH);
@@ -159,6 +166,8 @@ void read_x_y_values(BLEDevice peripheral)
 ////    Serial.println();
 //
     analogWrite(mainMotorPWM_PIN, byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    //Serial.println(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    myServo.write(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()), 0, 255, 0, 180));
 //    Serial.print("turningDirection: ");
 //    Serial.println(byteArrayToInt(turningDirectionChar.value(), turningDirectionChar.valueLength()));
 //    Serial.print("runningDirection: ");
