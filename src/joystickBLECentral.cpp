@@ -1,11 +1,12 @@
 /*
-  LED Control
-
   This example scans for Bluetooth® Low Energy peripherals until one with the advertised service
   "76ad7aaa-3782-11ed-a261-0242ac120002" UUID is found. Once discovered and connected it will listen to updates in the 
   x_reading characteristic 76ad7aa1-3782-11ed-a261-0242ac120002 and y_reading characteristic 76ad7aa2-3782-11ed-a261-0242ac120002
 */
 
+#define PRO_BOAT_CONTROL
+// #define PRO_SERVO_CONTROL
+#include <Arduino.h>
 #include <ArduinoBLE.h>
 #include <Servo.h>
 union ArrayToInteger 
@@ -19,10 +20,15 @@ int turnCW_PIN = 4;
 int turnCCW_PIN = 5;
 int runFwd_PIN = 6;
 int runBwd_PIN = 7;
+#ifdef PRO_SERVO_CONTROL
 int servo_PIN = 9;
 int servo_x_val = 90;
+#endif
 
 Servo myServo;
+
+void read_x_y_values(BLEDevice peripheral);
+int byteArrayToInt(const byte data[], int length);
 
 void setup() {
   BLE.setConnectionInterval(0x0006, 0x0006);
@@ -37,7 +43,9 @@ void setup() {
   digitalWrite(runBwd_PIN, LOW);
   digitalWrite(turnCW_PIN, LOW);
   digitalWrite(turnCCW_PIN, LOW);
+  #ifdef PRO_SERVO_CONTROL
   myServo.attach(servo_PIN);
+  #endif
 
   // initialize the Bluetooth® Low Energy hardware
   BLE.begin();
@@ -105,7 +113,7 @@ void read_x_y_values(BLEDevice peripheral)
     return;
   }
 
-  // retrieve the LED characteristic
+  // retrieve characteristic
   BLECharacteristic x_readingChar = peripheral.characteristic("76ad7aa1-3782-11ed-a261-0242ac120002");
   BLECharacteristic y_readingChar = peripheral.characteristic("76ad7aa2-3782-11ed-a261-0242ac120002");
   BLECharacteristic x_rawReadingChar = peripheral.characteristic("76ad7ab1-3782-11ed-a261-0242ac120002");
@@ -155,23 +163,13 @@ void read_x_y_values(BLEDevice peripheral)
     y_readingChar.read();
     turningDirectionChar.read();
     runningDirectionChar.read();
-    
-//    Serial.print(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
-//    Serial.print("\t");
-//    Serial.println(byteArrayToInt(y_readingChar.value(), y_readingChar.valueLength()));
-//    Serial.println();
-////    Serial.print(byteArrayToInt(x_rawReadingChar.value(), x_rawReadingChar.valueLength()));
-////    Serial.print("\t");
-////    Serial.println(byteArrayToInt(y_rawReadingChar.value(), y_rawReadingChar.valueLength()));
-////    Serial.println();
-//
+
+    Serial.print("x-value: ");
+    Serial.print(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
     analogWrite(mainMotorPWM_PIN, byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
-    //Serial.println(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    #ifdef PRO_SERVO_CONTROL
     myServo.write(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()), 0, 255, 0, 180));
-//    Serial.print("turningDirection: ");
-//    Serial.println(byteArrayToInt(turningDirectionChar.value(), turningDirectionChar.valueLength()));
-//    Serial.print("runningDirection: ");
-//    Serial.println(byteArrayToInt(runningDirectionChar.value(), runningDirectionChar.valueLength()));
+    #endif
   }
   Serial.println("Peripheral disconnected");
 }
@@ -190,5 +188,4 @@ int byteArrayToInt(const byte data[], int length)
   converter.array[2] = dataW[2];
   converter.array[3] = dataW[3];
   return converter.integer;
-  
 }
