@@ -9,11 +9,18 @@
 #include <Arduino.h>
 #include <ArduinoBLE.h>
 #include <Servo.h>
+#include "mbed.h"
 union ArrayToInteger 
 {
   byte array[4];
   uint32_t integer;
 };
+
+#define SERVICE_UUID "76ad7aaa-3782-11ed-a261-0242ac120002"
+#define PWM_PIN               12
+#define PWM_FREQUENCY         10000
+
+mbed::PwmOut pwmPin(digitalPinToPinName(PWM_PIN));
 
 int mainMotorPWM_PIN = 3;
 int turnCW_PIN = 4;
@@ -29,6 +36,7 @@ Servo myServo;
 
 void read_x_y_values(BLEDevice peripheral);
 int byteArrayToInt(const byte data[], int length);
+void setDutyCycle(int duty);
 
 void setup() {
   BLE.setConnectionInterval(0x0006, 0x0006);
@@ -46,27 +54,36 @@ void setup() {
   #ifdef PRO_SERVO_CONTROL
   myServo.attach(servo_PIN);
   #endif
-
+  pwmPin.period( 1.0 / PWM_FREQUENCY );
+  pwmPin.write( 0.5 );
   // initialize the Bluetooth® Low Energy hardware
   BLE.begin();
 
-  Serial.println("Bluetooth® Low Energy Central");
+  Serial.println("Bluetooth® Low Energy Central. Joystick central with motor electronics");
+  Serial.print("Scanning for ");
+  Serial.print(SERVICE_UUID);
 
   // start scanning for peripherals
-  BLE.scanForUuid("76ad7aaa-3782-11ed-a261-0242ac120002");
+  BLE.scanForUuid(SERVICE_UUID);
+  static uint32_t dutyCycle = 5;
+  
+  dutyCycle = ( dutyCycle + 1 ) % 100;  
+  dutyCycle = (dutyCycle/100.0);
+  //pwmPin.write( dutyCycle / 100.0 );
+  pwmPin.write(1.0);
+}
+
+void setDutyCycle(int duty)
+{
+  pwmPin.write( duty / 100.0 );
+  Serial.print("dutyCycle is: ");
+  Serial.println(duty);
 }
 
 void loop() {
   // check if a peripheral has been discovered
   BLEDevice peripheral = BLE.available();
-  delay(300);
-  Serial.print(".");
-  delay(300);
-  Serial.print(".");
-  delay(300);
-  Serial.print(".");
-  delay(300);
-  Serial.print(".");
+
   if (peripheral) {
     // discovered a peripheral, print out address, local name, and advertised service
     Serial.print("Found ");
@@ -164,9 +181,10 @@ void read_x_y_values(BLEDevice peripheral)
     turningDirectionChar.read();
     runningDirectionChar.read();
 
-    Serial.print("x-value: ");
-    Serial.print(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
-    analogWrite(mainMotorPWM_PIN, byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
+    //Serial.print("x-value: ");
+    //Serial.println(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()),0,255,0,97));
+    //analogWrite(mainMotorPWM_PIN, map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()),0,255,255,0));
+    setDutyCycle(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()),0,255,0,100));
     #ifdef PRO_SERVO_CONTROL
     myServo.write(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()), 0, 255, 0, 180));
     #endif
