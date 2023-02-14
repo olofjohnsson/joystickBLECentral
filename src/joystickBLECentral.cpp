@@ -27,6 +27,7 @@ int turnCW_PIN = 4;
 int turnCCW_PIN = 5;
 int runFwd_PIN = 6;
 int runBwd_PIN = 7;
+int led_PIN = 2;
 #ifdef PRO_SERVO_CONTROL
 int servo_PIN = 9;
 int servo_x_val = 90;
@@ -47,15 +48,17 @@ void setup() {
   pinMode(runBwd_PIN, OUTPUT);
   pinMode(turnCW_PIN, OUTPUT);
   pinMode(turnCCW_PIN, OUTPUT);
+  pinMode(led_PIN, OUTPUT);
+  digitalWrite(led_PIN, HIGH);
   digitalWrite(runFwd_PIN, LOW);
   digitalWrite(runBwd_PIN, LOW);
   digitalWrite(turnCW_PIN, LOW);
   digitalWrite(turnCCW_PIN, LOW);
+  pwmPin.write(0);
   #ifdef PRO_SERVO_CONTROL
   myServo.attach(servo_PIN);
   #endif
   pwmPin.period( 1.0 / PWM_FREQUENCY );
-  pwmPin.write( 0.5 );
   // initialize the Bluetooth® Low Energy hardware
   BLE.begin();
 
@@ -65,12 +68,6 @@ void setup() {
 
   // start scanning for peripherals
   BLE.scanForUuid(SERVICE_UUID);
-  static uint32_t dutyCycle = 5;
-  
-  dutyCycle = ( dutyCycle + 1 ) % 100;  
-  dutyCycle = (dutyCycle/100.0);
-  //pwmPin.write( dutyCycle / 100.0 );
-  pwmPin.write(1.0);
 }
 
 void setDutyCycle(int duty)
@@ -85,6 +82,7 @@ void loop() {
   BLEDevice peripheral = BLE.available();
 
   if (peripheral) {
+    digitalWrite(led_PIN, LOW);
     // discovered a peripheral, print out address, local name, and advertised service
     Serial.print("Found ");
     Serial.print(peripheral.address());
@@ -138,6 +136,10 @@ void read_x_y_values(BLEDevice peripheral)
   BLECharacteristic turningDirectionChar = peripheral.characteristic("76ad7aa6-3782-11ed-a261-0242ac120002");
   BLECharacteristic runningDirectionChar = peripheral.characteristic("76ad7aa7-3782-11ed-a261-0242ac120002");
 
+  BLECharacteristic button2Char = peripheral.characteristic("76ad7aa3-3782-11ed-a261-0242ac120002");
+  BLECharacteristic button3Char = peripheral.characteristic("76ad7aa4-3782-11ed-a261-0242ac120002");
+  BLECharacteristic button4Char = peripheral.characteristic("76ad7aa5-3782-11ed-a261-0242ac120002");
+
   if (!x_readingChar) {
     Serial.println("Peripheral does not have x_readingChar!");
     peripheral.disconnect();
@@ -148,11 +150,10 @@ void read_x_y_values(BLEDevice peripheral)
     peripheral.disconnect();
     return;
   }
-  //Serial.print("x_reading\ty_reading");
+
   while (peripheral.connected()) 
   {
     turningDirectionChar.read();
-    //delay(50);
     if(byteArrayToInt(turningDirectionChar.value(), turningDirectionChar.valueLength()) == 1)
     {
       digitalWrite(turnCW_PIN, HIGH);
@@ -164,7 +165,6 @@ void read_x_y_values(BLEDevice peripheral)
       digitalWrite(turnCCW_PIN, HIGH);
     }
     runningDirectionChar.read();
-    //delay(50);
     if(byteArrayToInt(runningDirectionChar.value(), runningDirectionChar.valueLength()) == 1)
     {
       digitalWrite(runFwd_PIN, HIGH);
@@ -181,15 +181,14 @@ void read_x_y_values(BLEDevice peripheral)
     turningDirectionChar.read();
     runningDirectionChar.read();
 
-    //Serial.print("x-value: ");
-    //Serial.println(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()),0,255,0,97));
-    //analogWrite(mainMotorPWM_PIN, map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()),0,255,255,0));
-    setDutyCycle(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()),0,255,0,100));
+    setDutyCycle(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()));
     #ifdef PRO_SERVO_CONTROL
-    myServo.write(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()), 0, 255, 0, 180));
+    myServo.write(map(byteArrayToInt(x_readingChar.value(), x_readingChar.valueLength()), 0, 100, 0, 180));
     #endif
   }
   Serial.println("Peripheral disconnected");
+  digitalWrite(led_PIN, HIGH);
+  setDutyCycle(0);
 }
 
 int byteArrayToInt(const byte data[], int length)
