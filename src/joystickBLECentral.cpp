@@ -17,21 +17,22 @@ union ArrayToInteger
 };
 
 #define SERVICE_UUID "76ad7aaa-3782-11ed-a261-0242ac120002"
-#define PWM_PIN               12
 #define PWM_FREQUENCY         10000
 
-mbed::PwmOut pwmPin(digitalPinToPinName(PWM_PIN));
 
-int mainMotorPWM_PIN = 3;
+
+int mainMotorPWM_PIN = 13;
 int turnCW_PIN = 4;
 int turnCCW_PIN = 5;
 int runFwd_PIN = 6;
 int runBwd_PIN = 7;
-int led_PIN = 2;
+int led_PIN = 3;
 #ifdef PRO_SERVO_CONTROL
 int servo_PIN = 9;
 int servo_x_val = 90;
 #endif
+
+mbed::PwmOut pwmPin(digitalPinToPinName(mainMotorPWM_PIN));
 
 Servo myServo;
 
@@ -43,13 +44,12 @@ void setup() {
   BLE.setConnectionInterval(0x0006, 0x0006);
   Serial.begin(9600);
   //while (!Serial);
-  pinMode(mainMotorPWM_PIN, OUTPUT);
   pinMode(runFwd_PIN, OUTPUT);
   pinMode(runBwd_PIN, OUTPUT);
   pinMode(turnCW_PIN, OUTPUT);
   pinMode(turnCCW_PIN, OUTPUT);
   pinMode(led_PIN, OUTPUT);
-  digitalWrite(led_PIN, HIGH);
+  digitalWrite(led_PIN, LOW);
   digitalWrite(runFwd_PIN, LOW);
   digitalWrite(runBwd_PIN, LOW);
   digitalWrite(turnCW_PIN, LOW);
@@ -82,7 +82,7 @@ void loop() {
   BLEDevice peripheral = BLE.available();
 
   if (peripheral) {
-    digitalWrite(led_PIN, LOW);
+    digitalWrite(led_PIN, HIGH);
     // discovered a peripheral, print out address, local name, and advertised service
     Serial.print("Found ");
     Serial.print(peripheral.address());
@@ -103,6 +103,10 @@ void loop() {
 
     // peripheral disconnected, start scanning again
     BLE.scanForUuid("76ad7aaa-3782-11ed-a261-0242ac120002");
+  }
+  else
+  {
+    digitalWrite(led_PIN, LOW);
   }
 }
 
@@ -187,7 +191,7 @@ void read_x_y_values(BLEDevice peripheral)
     #endif
   }
   Serial.println("Peripheral disconnected");
-  digitalWrite(led_PIN, HIGH);
+  digitalWrite(led_PIN, LOW);
   setDutyCycle(0);
 }
 
